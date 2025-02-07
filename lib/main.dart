@@ -96,32 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class RankingScreen extends StatefulWidget {
+class RankingScreen extends StatelessWidget {
   final List<Map<String, dynamic>> players;
   RankingScreen({required this.players});
-
-  @override
-  _RankingScreenState createState() => _RankingScreenState();
-}
-
-class _RankingScreenState extends State<RankingScreen> {
-  final TextEditingController controller = TextEditingController();
-
-  void addPlayer() {
-    if (controller.text.isNotEmpty) {
-      setState(() {
-        widget.players.add({'name': controller.text, 'score': 0});
-        controller.clear();
-      });
-    }
-  }
-
-  void newMatch() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => MatchScreen(players: widget.players)),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -133,25 +110,33 @@ class _RankingScreenState extends State<RankingScreen> {
           children: [
             Expanded(
               child: ListView.builder(
-                itemCount: widget.players.length,
+                itemCount: players.length,
                 itemBuilder: (context, index) {
                   return Card(
                     elevation: 3,
                     child: ListTile(
-                      title: Text(widget.players[index]['name']),
-                      trailing: Text('Puntos: ${widget.players[index]['score']}'),
+                      title: Text(players[index]['name']),
+                      trailing: Text('Puntos: ${players[index]['score']}'),
                     ),
                   );
                 },
               ),
             ),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(hintText: 'Nuevo jugador', border: OutlineInputBorder()),
+            ElevatedButton(
+              onPressed: () {
+                if (players.length >= 4) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MatchScreen(players: players)),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Se necesitan al menos 4 jugadores')),
+                  );
+                }
+              },
+              child: Text('Nuevo Partido'),
             ),
-            ElevatedButton(onPressed: addPlayer, child: Text('Añadir Jugador')),
-            SizedBox(height: 10),
-            ElevatedButton(onPressed: newMatch, child: Text('Nuevo Partido')),
           ],
         ),
       ),
@@ -159,16 +144,111 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 }
 
-class MatchScreen extends StatelessWidget {
+class MatchScreen extends StatefulWidget {
   final List<Map<String, dynamic>> players;
   MatchScreen({required this.players});
+
+  @override
+  _MatchScreenState createState() => _MatchScreenState();
+}
+
+class _MatchScreenState extends State<MatchScreen> {
+  final TextEditingController scoreController1 = TextEditingController();
+  final TextEditingController scoreController2 = TextEditingController();
+  final TextEditingController scoreController3 = TextEditingController();
+
+  late List<Map<String, dynamic>> selectedPair1;
+  late List<Map<String, dynamic>> selectedPair2;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedPair1 = [];
+    selectedPair2 = [];
+  }
+
+  // Función para seleccionar las parejas
+  void selectPairs() {
+    if (widget.players.length >= 4) {
+      setState(() {
+        selectedPair1 = [widget.players[0], widget.players[1]];
+        selectedPair2 = [widget.players[2], widget.players[3]];
+      });
+    }
+  }
+
+  // Registrar el resultado de los sets
+  void registerMatch() {
+    int set1Score1 = int.tryParse(scoreController1.text) ?? 0;
+    int set2Score1 = int.tryParse(scoreController2.text) ?? 0;
+    int set3Score1 = int.tryParse(scoreController3.text) ?? 0;
+    
+    int set1Score2 = int.tryParse(scoreController1.text) ?? 0;
+    int set2Score2 = int.tryParse(scoreController2.text) ?? 0;
+    int set3Score2 = int.tryParse(scoreController3.text) ?? 0;
+
+    setState(() {
+      // Actualizar los puntos de los jugadores después del partido
+      if (selectedPair1.isNotEmpty && selectedPair2.isNotEmpty) {
+        widget.players[0]['score'] += set1Score1 + set2Score1 + set3Score1;
+        widget.players[1]['score'] += set1Score2 + set2Score2 + set3Score2;
+      }
+    });
+
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Nuevo Partido')),
-      body: Center(
-        child: Text('Aquí podrás registrar los sets de los partidos. (Por implementar)'),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Selecciona las parejas para el partido:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ElevatedButton(
+              onPressed: selectPairs,
+              child: Text('Seleccionar parejas'),
+            ),
+            SizedBox(height: 20),
+            selectedPair1.isNotEmpty && selectedPair2.isNotEmpty
+                ? Column(
+                    children: [
+                      Text('Pareja 1:'),
+                      Text('Jugador 1: ${selectedPair1[0]['name']}'),
+                      Text('Jugador 2: ${selectedPair1[1]['name']}'),
+                      Text('Pareja 2:'),
+                      Text('Jugador 1: ${selectedPair2[0]['name']}'),
+                      Text('Jugador 2: ${selectedPair2[1]['name']}'),
+                    ],
+                  )
+                : Text('Esperando selección de parejas...'),
+            SizedBox(height: 30),
+            Text('Resultado de los sets:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            TextField(
+              controller: scoreController1,
+              decoration: InputDecoration(hintText: 'Resultado del primer set', border: OutlineInputBorder()),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: scoreController2,
+              decoration: InputDecoration(hintText: 'Resultado del segundo set', border: OutlineInputBorder()),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: scoreController3,
+              decoration: InputDecoration(hintText: 'Resultado del tercer set', border: OutlineInputBorder()),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: registerMatch,
+              child: Text('Registrar partido'),
+            ),
+          ],
+        ),
       ),
     );
   }
